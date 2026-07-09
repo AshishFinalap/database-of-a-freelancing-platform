@@ -1,0 +1,154 @@
+BEGIN;
+
+CREATE SCHEMA freelancer;
+SET search_path TO freelancer;
+
+CREATE TABLE User_Registration(
+	UserID SERIAL PRIMARY KEY,
+	Fname VARCHAR(30) NOT NULL,
+	Mname VARCHAR(30),
+	Lname VARCHAR(30) NOT NULL,
+	gender CHAR(1) NOT NULL,
+	email VARCHAR(80) UNIQUE NOT NULL,
+	"password" VARCHAR(80) NOT NULL CHECK (LENGTH("password")>=8),
+	contact_no VARCHAR(20) UNIQUE NOT NULL,
+	country VARCHAR(40),
+	linkedin_profile VARCHAR(50) UNIQUE NOT NULL
+);
+
+CREATE TABLE Freelancer(
+    FreelancerID INTEGER PRIMARY KEY,
+    hourly_wage INTEGER NOT NULL,
+	bio TEXT,
+    experience_level VARCHAR(30) DEFAULT 'Beginner' CHECK (experience_level IN ('Beginner', 'Intermediate', 'Expert')),
+    FOREIGN KEY (FreelancerID) REFERENCES User_Registration(UserID) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+CREATE TABLE freelancer_skills(
+	FreelancerID INTEGER,
+	skills VARCHAR(80),
+	PRIMARY KEY(FreelancerID, skills),
+	FOREIGN KEY (FreelancerID) REFERENCES Freelancer(FreelancerID) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE freelancer_edu(
+	FreelancerID INTEGER,
+	education VARCHAR(80),
+	PRIMARY KEY(FreelancerID, education),
+	FOREIGN KEY (FreelancerID) REFERENCES Freelancer(FreelancerID) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE freelancer_known_languages(
+    FreelancerID INTEGER,
+    language VARCHAR(50),
+    PRIMARY KEY(FreelancerID, language),
+    FOREIGN KEY (FreelancerID) REFERENCES Freelancer(FreelancerID) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE Client(
+    ClientID INTEGER PRIMARY KEY,
+    hourly_wage INTEGER NOT NULL CHECK (hourly_wage >= 0),
+    payment_authentication BOOLEAN NOT NULL,
+    company_name VARCHAR(50) NOT NULL,
+	bio TEXT,
+    FOREIGN KEY(ClientID) REFERENCES User_Registration(UserID) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+CREATE TABLE client_skills_expectation(
+    ClientID INTEGER,
+    expected_skills VARCHAR(80),
+    PRIMARY KEY(ClientID, expected_skills),
+    FOREIGN KEY(ClientID) REFERENCES Client(ClientID) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE Project(
+    ProjectID SERIAL PRIMARY KEY,
+    project_title VARCHAR(100) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    description TEXT NOT NULL,
+    required_exp_lvl VARCHAR(30) CHECK (required_exp_lvl IN ('Beginner', 'Intermediate', 'Expert')),
+    budget INTEGER NOT NULL,
+	posted_on DATE NOT NULL,
+    deadline DATE NOT NULL,
+    payment_type VARCHAR(30) CHECK (payment_type IN ('Fixed Price','Hourly Rate')),
+    status VARCHAR(30) DEFAULT 'Unassigned' CHECK (status IN ('Unassigned', 'Completed', 'Ongoing')),
+    ClientID INTEGER NOT NULL,
+    FOREIGN KEY(ClientID) REFERENCES Client(ClientID) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+CREATE TABLE project_skills_required(
+    ProjectID INTEGER,
+    required_skills VARCHAR(80),
+    PRIMARY KEY(ProjectID, required_skills),
+    FOREIGN KEY(ProjectID) REFERENCES Project(ProjectID) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE Proposal(
+	FreelancerID INTEGER,
+	ProjectID INTEGER,
+	proposed_amount INTEGER NOT NULL,
+	pitch TEXT NOT NULL,
+	req_time TIMESTAMP NOT NULL,
+ 	PRIMARY KEY(ProjectID, FreelancerID),
+ 	FOREIGN KEY(ProjectID) REFERENCES Project(ProjectID) ON DELETE CASCADE ON UPDATE CASCADE,
+ 	FOREIGN KEY(FreelancerID) REFERENCES Freelancer(FreelancerID) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE works_on(
+	ProjectID  INTEGER,
+	FreelancerID INTEGER,
+	hourly_wage INTEGER NOT NULL,
+    started_on TIMESTAMP NOT NULL,
+	deadline TIMESTAMP CHECK (deadline > started_on) NOT NULL,
+	working_status VARCHAR(30) CHECK (working_status IN ('Withdrawn', 'Completed', 'Ongoing')) DEFAULT 'Ongoing',
+    completed_on TIMESTAMP CHECK (completed_on > started_on),
+	PRIMARY KEY(ProjectID, FreelancerID),
+	FOREIGN KEY(ProjectID) REFERENCES Project(ProjectID) ON DELETE CASCADE ON UPDATE CASCADE,
+	FOREIGN KEY(FreelancerID) REFERENCES Freelancer(FreelancerID) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+CREATE TABLE Transactions(
+    TransactionID SERIAL PRIMARY KEY,
+    settled_on TIMESTAMP NOT NULL,
+    method VARCHAR(30) NOT NULL,
+    amount INTEGER NOT NULL,
+    ProjectID  INTEGER NOT NULL,
+	FreelancerID INTEGER NOT NULL,
+    ClientID INTEGER NOT NULL,
+    FOREIGN KEY(ProjectID, FreelancerID) REFERENCES works_on(ProjectID, FreelancerID) ON DELETE SET NULL ON UPDATE CASCADE,
+    FOREIGN KEY(ClientID) REFERENCES Client(ClientID) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+CREATE TABLE Reviews(
+    ProjectID  INTEGER,
+	FreelancerID INTEGER,
+    ClientID INTEGER,
+    comment TEXT NOT NULL,
+    rating INTEGER NOT NULL CHECK (rating>=1 AND rating<=5),
+    PRIMARY KEY(ClientID, ProjectID, FreelancerID, comment),
+    FOREIGN KEY(ProjectID, FreelancerID) REFERENCES works_on(ProjectID, FreelancerID) ON DELETE SET NULL ON UPDATE CASCADE,
+    FOREIGN KEY(ClientID) REFERENCES Client(ClientID) ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+CREATE TABLE customer_support (
+    TokenNo SERIAL PRIMARY KEY,
+    issue_subject VARCHAR(100) NOT NULL,
+    issue_description TEXT NOT NULL,
+    issue_category VARCHAR(15) CHECK (issue_category IN ('Technical', 'Payment', 'Account', 'Project', 'Policy')),
+    issue_status VARCHAR(15) CHECK (issue_status IN ('Resolved', 'Unresolved')),
+    UserID INTEGER NOT NULL,
+    FOREIGN KEY (UserID) REFERENCES User_Registration(UserID) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE discussion_forum(
+    ForumID SERIAL PRIMARY KEY,
+    title VARCHAR(100) NOT NULL,
+    content TEXT NOT NULL,
+    category VARCHAR(40) NOT NULL,
+    access_level VARCHAR(15) CHECK (access_level IN ('Public', 'Restricted', 'Private')),
+    posted_on TIMESTAMP NOT NULL,
+    UserID INTEGER NOT NULL,
+    FOREIGN KEY (UserID) REFERENCES User_Registration(UserID) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+COMMIT;

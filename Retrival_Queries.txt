@@ -1,0 +1,350 @@
+----------------------------- Client Based Queries -----------------------------
+
+-- 1. Get the details of a specific freelancer by FreelancerID including avg working hour and avg rating.
+-- This query is used by client to look a detailed profile of a freelancer.
+
+SELECT
+    U.Fname || ' ' || U.Lname AS "Name", U.gender, U.email, U.contact_no, U.country, U.linkedin_profile,
+    F.hourly_wage, F.bio, F.experience_level,avg_details.avg_working_time, avg_details.avg_rating
+FROM
+    User_registration AS U
+JOIN
+    Freelancer AS F ON (U.UserID=F.FreelancerID)
+NATURAL JOIN
+    (SELECT
+        freelancerID, AVG(rating) AS avg_rating, AVG(completed_on - started_on) AS avg_working_time
+    FROM
+        works_on AS W NATURAL JOIN reviews AS R
+    WHERE
+        W.FreelancerID=33 AND W.working_status='Completed' GROUP BY FreelancerID) AS avg_details;
+
+-- 2. List all freelancers with an hourly wage greater than a certain amount.
+-- If client want to search for all the freelancers with hourly wage greater than some amount.
+
+SELECT
+    Fname || ' ' || Lname AS "name", hourly_wage, experience_level, bio
+FROM
+    User_Registration AS U
+JOIN
+    Freelancer AS F ON (U.UserID = F.FreelancerID)
+WHERE
+    F.hourly_wage > 25;
+
+-- 3. Find freelancers with specific skills, education, and languages known.
+-- If client is looking for a freelancer for some project which have a specific requirement.
+
+SELECT DISTINCT
+    U.Fname || ' ' || U.Lname AS Name, U.gender, U.email, U.contact_no, U.country, 
+    U.linkedin_profile, F.hourly_wage, F.bio, F.experience_level
+FROM
+    User_Registration AS U
+JOIN
+    Freelancer AS F ON U.UserID = F.FreelancerID
+NATURAL JOIN
+    freelancer_skills AS FS
+NATURAL JOIN
+    freelancer_edu AS FE
+NATURAL JOIN
+    freelancer_known_languages AS FL
+WHERE
+    FS.skills IN ('HTML', 'Node.js', 'Google Ads', 'Python', 'Java')
+    OR LOWER(FE.education) IN ('bachelor of science', 'master of business administration')
+    OR FL.language IN ('Gujarati', 'English', 'French');
+
+-- 4. Count number of freelancers with expert/ intermediate / beginner level.
+-- If client need to do a work based on freelancer's exp level, he should be able to find them.
+
+SELECT
+    Fname || ' ' || Lname AS "Name", U.email, U.contact_no, U.country, 
+    U.linkedin_profile, F.hourly_wage, F.bio
+FROM
+    Freelancer AS F
+JOIN
+    User_Registration AS U
+ON
+    F.freelancerID=U.UserID
+WHERE
+    experience_level = 'Beginner';
+
+-- 5. Retrieve information of the freelancer’s ongoing, completed and withdrawn projects.
+-- Client should be able to see past perfomance and work of a freelancer
+
+SELECT
+    P.project_title, P.category, P.description, P.required_exp_lvl, P.budget,
+    P.posted_on, P.deadline, P.payment_type, P.status
+FROM
+    User_Registration AS U
+JOIN
+    Freelancer AS F ON U.UserID = F.FreelancerID
+JOIN
+    works_on AS W ON F.FreelancerID = W.FreelancerID
+JOIN
+    Project AS P ON W.ProjectID = P.ProjectID
+WHERE
+    F.FreelancerID=8;
+
+-- 6. Retrieve all feedback and ratings for a specific freelancer.
+-- Client should be able to view past reviews and ratings of a freelancer to better judge a freelancer if he is good for project or not.
+
+SELECT
+    UC.Fname || ' ' || UC.Lname AS "Client Name", UF.Fname || ' ' || UF.Lname AS "Freelancer Name",
+    P.project_title, R.comment, R.rating
+FROM
+    Reviews AS R
+JOIN
+    User_Registration AS UC ON (R.ClientID=UC.UserID)
+JOIN
+    User_Registration AS UF ON (R.FreelancerID=UF.UserID)
+NATURAL JOIN
+    Project AS P
+WHERE
+    R.FreelancerID = 11;
+
+-- 7. Find transactions associated with a specific project.
+-- Client should be able to look the transactions he made for a specific project.
+
+SELECT
+    P.project_title, UF.Fname || ' ' || UF.Lname AS "Freelancer Name",
+    T.amount, T.method, T.settled_on
+FROM
+    Transactions AS T
+JOIN
+    User_Registration AS UF ON T.FreelancerID=UF.UserID
+NATURAL JOIN
+    Project AS P
+WHERE
+    ProjectID = 75;
+
+-- 8. Get total amount spent by Client.
+-- Client should be able to see how much he has spent so far.
+
+SELECT
+    SUM(P.budget) AS total_amount_spent
+FROM
+    Project P
+JOIN
+    Client C ON P.ClientID = C.ClientID
+WHERE
+    P.ClientID = 9;
+
+----------------------------- Freelancer Based Queries -----------------------------
+
+-- 9. Experience level updation after completion of each project by freelancer.
+-- Experience level should be updated after every successful project completion. To align with already present data, we provide following scheme:
+-- Completed projects <5, Beginner. Completed projects >=5, intermediate. Completed projects >=10, Expert.
+
+UPDATE
+    Freelancer
+SET
+    experience_level = 'Intermediate'
+WHERE
+    experience_level = 'Beginner' AND FreelancerID IN (
+    SELECT
+        W.FreelancerID
+    FROM
+        works_on AS W
+    WHERE
+        LOWER(W.working_status)='completed'
+    GROUP BY
+        W.FreelancerID
+    HAVING
+        COUNT(W.ProjectID) >= 5
+);
+
+-- for expert updation, we will change in this query accordingly.
+
+-- 10. List out all projects from specific category,specific skills and payment method verified, experience level filter, payment_type(hourly/fixed).
+-- Freelancer should be able to find projects by applying some filters.
+
+SELECT DISTINCT
+    P.project_title, P.category, P.description, P.required_exp_lvl,
+    P.budget, P.payment_type, P.status, U.Fname || ' ' || U.Lname AS "Posted By"
+FROM
+    Project AS P
+NATURAL JOIN
+    Client AS C
+NATURAL JOIN
+    project_skills_required AS PS
+JOIN
+    User_Registration AS U ON (C.ClientID=U.UserID)
+WHERE
+    P.category IN ('Web Development')
+    OR PS.required_skills IN ('Market Research')
+    OR LOWER(P.required_exp_lvl)='intermediate'
+    OR LOWER(P.payment_type)='hourly rate';
+
+-- 11. List all projects of specific freelancers include completed/ongoing/withdrawn.
+-- Freelancer should be able to view his past work.
+
+SELECT
+    P.project_title, P.category, P.description, P.required_exp_lvl, P.budget,
+    P.posted_on, P.deadline, P.payment_type, W.working_status
+FROM
+    Project AS P
+JOIN
+    works_on AS W ON P.ProjectID = W.ProjectID
+WHERE
+    W.FreelancerID = 33
+
+-- 12. List all the projects that were completed on time so far for a freelancer.
+-- Freelancer should be able to see how many number of projects he has completed on time so far.
+
+SELECT
+    P.project_title, P.category, P.description, P.payment_type
+FROM
+    Project P
+JOIN
+    works_on W ON P.ProjectID = W.ProjectID
+WHERE
+    W.FreelancerID = 40
+    AND W.working_status = 'Completed'
+    AND W.completed_on <= W.deadline;
+
+-- 13. Find Total income earned by a freelancer so far.
+-- Freelancer should be able to see how much he has raised so far.
+
+SELECT
+    U.Fname || ' ' || U.Lname AS freelancer_name,
+    SUM(T.amount) AS total_income
+FROM
+    Transactions T
+JOIN
+    works_on W ON (T.ProjectID = W.ProjectID AND T.FreelancerID = W.FreelancerID)
+JOIN
+    User_Registration U ON (W.FreelancerID = U.UserID)
+WHERE
+    W.working_status = 'Completed' 
+GROUP BY
+    U.UserID;
+
+-- 14. Give all proposals of a particular freelancer.
+-- Freelancer should be able to see all his submitted proposals.
+
+SELECT
+    *
+FROM
+    Proposal
+WHERE
+    FreelancerID = 33;
+
+-- 15. List total submitted proposals, active proposals, accepted proposals.
+-- Freelancer should be able to see proposals that are active or already accepted.
+
+SELECT
+    PR.proposed_amount, PR. pitch, PR.req_time, P.title
+FROM
+    Freelancer AS F
+LEFT JOIN
+    Proposal AS PR ON F.FreelancerID = PR.FreelancerID
+LEFT JOIN
+    Project AS P ON PR.ProjectID = P.ProjectID
+WHERE
+    F.FreelancerID = 40
+	AND LOWER(P.status)='unassigned';
+
+-- 16. Get the average rating given by a specific client.
+-- Freelancer should be able to see how much rating he is getting from a specific client.
+
+SELECT
+    AVG(rating) AS avg_rating
+FROM
+    Reviews
+WHERE
+    ClientID = 9
+	AND FreelancerID = 11
+GROUP BY
+    ClientID, FreelancerID;
+
+----------------------------- Queries for both Freelancer and Client -----------------------------
+
+-- 17. User to know their issue details.
+-- User should be able to view his issue.
+
+SELECT
+    issue_subject, issue_description, issue_category, issue_status
+FROM
+    customer_support
+WHERE
+    UserID = 10;
+
+-- 18. User wants to know transaction details.
+-- User should be able to view all the transactions he made.
+
+SELECT 
+    *
+FROM
+    Transactions
+WHERE
+    ClientID=33 OR FreelancerID=33;
+
+-- 19. To find the discussion forum articles in a specific category.
+-- User should be able to read discussion forum articles based on category he likes.
+
+SELECT
+    title, content, access_level, 
+    posted_on, UserID AS "Posted by"
+FROM
+    discussion_forum
+WHERE
+    category in ('Technology', 'Literature')
+	AND access_level='Public';
+
+-- 20. User wants to know what comments have been given by him or he has received it
+
+SELECT
+    comment, rating
+FROM
+    Reviews
+WHERE
+    ClientID = 41 OR FreelancerID = 41;
+
+----------------------------- Admin Based Queries -----------------------------
+
+-- 21. Retrieve all transactions for a specific interval.
+-- Admin should be able to view stats of transactions happening.
+
+SELECT 
+	T.settled_on, T.method, T.amount, T.clientid AS By_client, 
+	T.freelancerid AS To_freelancer
+FROM 
+	Transactions AS T
+WHERE 
+	settled_on >= '2023-12-24' AND settled_on <= '2024-12-24';
+
+----------------------------- Transaction Based Queries -----------------------------
+
+-- 22. Find the projects which are completed but not involved in the transaction.
+
+SELECT 
+	*
+FROM 
+	Project
+WHERE 
+	status = 'Completed'
+	AND ProjectID NOT IN (SELECT ProjectID FROM Transactions);
+
+-- 23. Find the delay in the transaction.
+
+SELECT
+    T.TransactionID, T.settled_on AS transaction_settled_on,
+    W.completed_on AS project_deadline, AGE(T.settled_on, w.completed_on) AS delay
+FROM
+    Transactions AS T
+JOIN 
+	works_on AS W ON (T.ProjectID=W.ProjectID AND T.FreelancerID=W.FreelancerID)
+JOIN 
+	Project AS P ON (P.ProjectID=T.ProjectID)
+WHERE
+    t.settled_on > w.completed_on;
+
+-- 24. Number of transaction for different methods with amount.
+-- Suppose we want to track how much transaction is happening by a given method
+
+SELECT
+    method AS payment_method,
+    SUM(amount),
+    COUNT(*) AS transaction_count
+FROM
+    Transactions
+GROUP BY
+    method;
