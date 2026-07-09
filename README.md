@@ -1,2 +1,6 @@
-# Self-Optimizing-Distributed-Cache-using-Generative-AI
-Database of A Freelancing Platform | PostgreSQL § • Designed and implemented a comprehensive freelancing database system with Entity-Relationship modeling, normalizing to Boyce-Codd Normal Form (BCNF) to eliminate data redundancy and ensure optimal database structure. • Executed ER-to-relational mapping and deployed the database on PostgreSQL .
+# Database of A Freelancing Platform | PostgreSQL §
+Designed and implemented a comprehensive freelancing database system with Entity-Relationship modeling,
+normalizing to Boyce-Codd Normal Form (BCNF) to eliminate data redundancy and ensure optimal database
+structure.
+Executed ER-to-relational mapping and deployed the database on PostgreSQL using Data Definition Language (DDL)
+commands, while developing complex retrieval queries for efficient data access and manipulation.
